@@ -73,6 +73,12 @@
 .card .pip{font-size:20px;margin-top:auto;margin-left:auto;line-height:1}
 .card.back{background:repeating-linear-gradient(45deg,#1a3d8f 0 4px,#2f5fc0 4px 8px);box-shadow:0 0 0 1px #000,inset 0 0 0 3px #fff}
 .card.pick{box-shadow:0 0 0 2px #ffd400,1px 1px 3px rgba(0,0,0,.4)}
+.card.ghost{visibility:hidden}
+/* the stack in the air follows the cursor and must never be hit-tested,
+   or elementFromPoint would report the cards instead of the pile below */
+.dragging{position:fixed;z-index:9999;pointer-events:none;width:54px;filter:drop-shadow(2px 4px 4px rgba(0,0,0,.45))}
+.dragging .card{position:absolute;left:0}
+.pile{touch-action:none}
 .stackpos{position:absolute;left:0}
 .sol-bar{display:flex;gap:6px;align-items:center;padding:4px 6px;background:var(--face);flex:0 0 auto}
 .sol-win{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.45)}

@@ -78,6 +78,13 @@ export function Ico({ n, s = 32 }: { n: IconName | string; s?: number }) {
       <rect x="6" y="8" width="20" height="13" fill="#008080"/>
       <rect x="12" y="24" width="8" height="3" fill="#808080"/><rect x="8" y="27" width="16" height="2" fill="#c0c7c8" stroke="#000"/>
     </svg>);
+    case "calc": return (<svg {...p}>
+      <rect x="6" y="3" width="20" height="26" fill="#000"/><rect x="7" y="4" width="18" height="24" fill="#c0c7c8"/>
+      <rect x="9" y="6" width="14" height="6" fill="#0b2b0b"/><rect x="10" y="7" width="12" height="4" fill="#26f000" opacity=".55"/>
+      <rect x="9" y="14" width="3" height="3" fill="#555"/><rect x="14" y="14" width="3" height="3" fill="#555"/><rect x="19" y="14" width="3" height="3" fill="#a33"/>
+      <rect x="9" y="19" width="3" height="3" fill="#555"/><rect x="14" y="19" width="3" height="3" fill="#555"/><rect x="19" y="19" width="3" height="3" fill="#a33"/>
+      <rect x="9" y="24" width="8" height="3" fill="#555"/><rect x="19" y="24" width="3" height="3" fill="#a33"/>
+    </svg>);
     case "power": return (<svg {...p}>
       <circle cx="16" cy="17" r="10" fill="none" stroke="#c02020" strokeWidth="3"/>
       <rect x="14.5" y="3" width="3" height="13" fill="#c02020"/>

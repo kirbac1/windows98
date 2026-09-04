@@ -6,13 +6,25 @@ import type { ReactElement } from "react";
 export type IconName =
   | "computer" | "recycle" | "amp" | "mine" | "cards" | "notepad"
   | "paint" | "ie" | "folder" | "file" | "drive" | "display"
-  | "power" | "run" | "info" | "flag";
+  | "power" | "run" | "info" | "flag" | "calc";
 
 export type AppId =
   | "amp" | "mines" | "sol" | "notepad" | "paint" | "ie" | "computer"
-  | "recycle" | "display" | "welcome" | "about" | "run" | "shutdown" | "dialog";
+  | "recycle" | "display" | "welcome" | "about" | "run" | "shutdown" | "dialog"
+  | "calc" | "closeprogram";
 
-export type PowerMode = "off" | "restart" | "standby";
+/** Screen savers, by their Control Panel names. */
+export type SaverKind = "none" | "starfield" | "flying" | "mystify";
+
+export interface Settings {
+  /** Wallpaper id — see data/wallpapers.ts */
+  wall: string;
+  saver: SaverKind;
+  /** Idle minutes before the screen saver starts. */
+  saverWait: number;
+}
+
+export type PowerMode = "off" | "restart" | "standby" | "crash";
 
 /** Anything an app can be opened with. Notepad takes a body, dialogs a message. */
 export interface LaunchProps {
@@ -48,8 +60,8 @@ export interface Sys {
   focus(id: number): void;
   dialog(title: string, msg: string): void;
   power(mode: PowerMode): void;
-  wall: string;
-  setWall(wall: string): void;
+  settings: Settings;
+  setSettings(patch: Partial<Settings>): void;
 }
 
 export interface AppProps {

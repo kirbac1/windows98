@@ -5,7 +5,8 @@ import { NotepadApp } from "../apps/Notepad";
 import { PaintApp } from "../apps/Paint";
 import { BrowserApp } from "../apps/Browser";
 import { ComputerApp } from "../apps/Computer";
-import { AboutApp, DialogApp, DisplayApp, RecycleApp, RunApp, ShutApp, WelcomeApp } from "../apps/Dialogs";
+import { CalcApp } from "../apps/Calculator";
+import { AboutApp, CloseProgramApp, DialogApp, DisplayApp, RecycleApp, RunApp, ShutApp, WelcomeApp } from "../apps/Dialogs";
 import type { AppDef, AppId, IconName } from "./types";
 
 /** Everything installed on this machine. Default window sizes are the
@@ -25,6 +26,8 @@ export const APPS: Record<AppId, AppDef> = {
   about: { title: "About Nostalgia 98", icon: "info", w: 412, h: 300, C: AboutApp, resizable: false },
   run: { title: "Run", icon: "run", w: 352, h: 168, C: RunApp, resizable: false },
   shutdown: { title: "Shut Down Windows", icon: "power", w: 340, h: 200, C: ShutApp, resizable: false },
+  calc: { title: "Calculator", icon: "calc", w: 262, h: 268, C: CalcApp, resizable: false },
+  closeprogram: { title: "Close Program", icon: "power", w: 366, h: 250, C: CloseProgramApp, resizable: false },
   dialog: { title: "Nostalgia 98", icon: "info", w: 340, h: 170, C: DialogApp, resizable: false, multi: true },
 };
 
@@ -50,6 +53,7 @@ export const SUBMENUS: Record<string, { k: DesktopKey | "notes"; label: string; 
     { k: "sol", label: "Solitaire", icon: "cards" },
     { k: "paint", label: "Paint", icon: "paint" },
     { k: "notepad", label: "Notepad", icon: "notepad" },
+    { k: "calc", label: "Calculator", icon: "calc" },
     { k: "ie", label: "Nostalgia Explorer", icon: "ie" },
     { k: "computer", label: "Windows Explorer", icon: "folder" },
   ],

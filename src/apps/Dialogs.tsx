@@ -1,50 +1,135 @@
 import { useState } from "react";
 import { Ico } from "../system/Icon";
-import type { AppId, AppProps, PowerMode } from "../system/types";
-
-export const WALLS: [string, string][] = [
-  ["wall-teal", "Teal (default)"],
-  ["wall-hatch", "Teal, hatched"],
-  ["wall-navy", "Midnight"],
-  ["wall-slate", "Slate"],
-  ["wall-plum", "Plum"],
-  ["wall-clouds", "Clouds"],
-];
+import { WALLPAPERS, wallpaperById } from "../data/wallpapers";
+import type { AppId, AppProps, PowerMode, SaverKind } from "../system/types";
 
 export function DisplayApp({ sys, win }: AppProps) {
-  const [pick, setPick] = useState(sys.wall);
+  const [tab, setTab] = useState<"bg" | "saver">("bg");
+  const [wall, setWall] = useState(sys.settings.wall);
+  const [saver, setSaver] = useState<SaverKind>(sys.settings.saver);
+  const [wait, setWait] = useState(sys.settings.saverWait);
+  const apply = () => sys.setSettings({ wall, saver, saverWait: wait });
+
+  const SAVERS: [SaverKind, string][] = [
+    ["none", "(None)"],
+    ["starfield", "Starfield Simulation"],
+    ["flying", "Flying Windows"],
+    ["mystify", "Mystify Your Mind"],
+  ];
+
+  /* The little monitor at the top previews whichever tab you are on. */
+  const preview =
+    tab === "bg"
+      ? { background: wallpaperById(wall).background }
+      : { background: saver === "mystify" ? "#12002a" : "#000" };
+
   return (
     <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 8, flex: 1, minHeight: 0 }}>
-      <div style={{ display: "grid", placeItems: "center", padding: "6px 0" }}>
-        <div className="raised" style={{ width: 150, height: 112, padding: 6 }}>
-          <div className={pick} style={{ width: "100%", height: "100%", position: "relative", boxShadow: "inset 0 0 0 1px #000" }}>
-            <div style={{ position: "absolute", left: 4, top: 4, width: 14, height: 11, background: "#c0c7c8", boxShadow: "0 0 0 1px #000" }} />
-            <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 8, background: "#c0c7c8", boxShadow: "inset 0 1px 0 #fff" }} />
+      <div className="tabs">
+        <button className={"tab" + (tab === "bg" ? " on" : "")} onClick={() => setTab("bg")}>Background</button>
+        <button className={"tab" + (tab === "saver" ? " on" : "")} onClick={() => setTab("saver")}>Screen Saver</button>
+      </div>
+      <div className="tabbody">
+        <div style={{ display: "grid", placeItems: "center", padding: "8px 0 4px" }}>
+          <div className="raised" style={{ width: 150, height: 112, padding: 6 }}>
+            <div style={{ ...preview, width: "100%", height: "100%", position: "relative", boxShadow: "inset 0 0 0 1px #000" }}>
+              {tab === "bg" ? (
+                <>
+                  <div style={{ position: "absolute", left: 4, top: 4, width: 14, height: 11, background: "#c0c7c8", boxShadow: "0 0 0 1px #000" }} />
+                  <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 8, background: "#c0c7c8", boxShadow: "inset 0 1px 0 #fff" }} />
+                </>
+              ) : (
+                <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "#8fa4c8", fontSize: 9 }}>
+                  {saver === "none" ? "(None)" : "\u2726  \u00b7  \u2726"}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-      <div className="fset" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-        <span className="lg">Wallpaper</span>
-        <div className="listbox scroll">
-          {WALLS.map(([k, label]) => (
-            <div
-              key={k}
-              className={"row" + (pick === k ? " sel" : "")}
-              onClick={() => setPick(k)}
-              onDoubleClick={() => {
-                sys.setWall(k);
-                sys.close(win.id);
-              }}
-            >
-              {label}
+
+        {tab === "bg" ? (
+          <div className="fset" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+            <span className="lg">Wallpaper</span>
+            <div className="listbox scroll">
+              {WALLPAPERS.map((w) => (
+                <div
+                  key={w.id}
+                  className={"row" + (wall === w.id ? " sel" : "")}
+                  onClick={() => setWall(w.id)}
+                  onDoubleClick={() => { sys.setSettings({ wall: w.id }); sys.close(win.id); }}
+                >
+                  <span style={{ width: 14, height: 14, flex: "0 0 auto", background: w.background, backgroundSize: "cover", boxShadow: "0 0 0 1px #000" }} />
+                  {w.name}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="fset" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+            <span className="lg">Screen Saver</span>
+            <div className="listbox scroll">
+              {SAVERS.map(([k, label]) => (
+                <div key={k} className={"row" + (saver === k ? " sel" : "")} onClick={() => setSaver(k)}>
+                  {label}
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, paddingTop: 8 }}>
+              <span>Wait:</span>
+              <input
+                className="field"
+                type="number"
+                min="1"
+                max="60"
+                value={wait}
+                onChange={(e) => setWait(Math.max(1, Math.min(60, +e.target.value || 1)))}
+                style={{ width: 52 }}
+                aria-label="Minutes before the screen saver starts"
+              />
+              <span>minutes</span>
+            </div>
+          </div>
+        )}
       </div>
       <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-        <button className="btn" onClick={() => { sys.setWall(pick); sys.close(win.id); }}>OK</button>
+        <button className="btn" onClick={() => { apply(); sys.close(win.id); }}>OK</button>
         <button className="btn" onClick={() => sys.close(win.id)}>Cancel</button>
-        <button className="btn" onClick={() => sys.setWall(pick)}>Apply</button>
+        <button className="btn" onClick={apply}>Apply</button>
+      </div>
+    </div>
+  );
+}
+
+/** Ctrl+Alt+Del. Explorer and Systray are always listed, exactly as they
+ *  were, and ending Explorer does what ending Explorer used to do. */
+export function CloseProgramApp({ sys, win, props }: AppProps) {
+  const tasks: { id: number; label: string }[] = JSON.parse(props.msg || "[]");
+  const [pick, setPick] = useState(tasks.length ? tasks[0].id : -1);
+  return (
+    <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 9, flex: 1, minHeight: 0 }}>
+      <div style={{ lineHeight: 1.45 }}>
+        This machine is running the following programs. To close one, select it and choose End Task.
+      </div>
+      <div className="listbox scroll" style={{ minHeight: 90 }}>
+        {tasks.map((t) => (
+          <div key={t.id} className={"row" + (pick === t.id ? " sel" : "")} onClick={() => setPick(t.id)}>
+            {t.label}
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", marginTop: "auto" }}>
+        <button
+          className="btn"
+          onClick={() => {
+            if (pick === -2) { sys.close(win.id); sys.power("crash"); return; }
+            if (pick >= 0) sys.close(pick);
+            sys.close(win.id);
+          }}
+        >
+          End Task
+        </button>
+        <button className="btn" onClick={() => { sys.close(win.id); sys.open("shutdown"); }}>Shut Down</button>
+        <button className="btn" onClick={() => sys.close(win.id)}>Cancel</button>
       </div>
     </div>
   );
@@ -135,6 +220,7 @@ const RUNMAP: Record<string, AppId> = {
   notepad: "notepad", paint: "paint", mspaint: "paint",
   explorer: "ie", iexplore: "ie", browser: "ie",
   computer: "computer", display: "display", about: "about",
+  calc: "calc", calculator: "calc",
 };
 
 export function RunApp({ sys, win }: AppProps) {

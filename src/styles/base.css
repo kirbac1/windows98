@@ -35,12 +35,6 @@ button{font-family:inherit;font-size:inherit;color:var(--txt)}
 
 /* ---- desktop ---- */
 .desktop{position:absolute;inset:0 0 28px 0;overflow:hidden}
-.wall-teal{background:#008080}
-.wall-navy{background:#000e42}
-.wall-slate{background:#5b7f95}
-.wall-plum{background:#3f2a4d}
-.wall-clouds{background:linear-gradient(#3a6fc4 0%,#6ea6e8 45%,#a8cdf0 75%,#d8e9f8 100%)}
-.wall-hatch{background:#008080;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.06) 0 2px,transparent 2px 4px)}
 
 .icons{position:absolute;top:6px;left:6px;display:flex;flex-direction:column;flex-wrap:wrap;gap:2px;max-height:calc(100% - 12px);align-content:flex-start}
 .dicon{width:76px;padding:4px 2px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:default;border:1px dotted transparent;background:none}
@@ -135,3 +129,48 @@ textarea.field{resize:none}
 .scroll::-webkit-scrollbar{width:16px;height:16px}
 .scroll::-webkit-scrollbar-track{background:repeating-conic-gradient(#fff 0 25%,#c0c7c8 0 50%) 0 0/2px 2px}
 .scroll::-webkit-scrollbar-thumb{background:var(--face);box-shadow:inset -1px -1px 0 var(--blk),inset 1px 1px 0 var(--wht),inset -2px -2px 0 var(--shd),inset 2px 2px 0 var(--face-lt)}
+
+/* ---- property-sheet tabs ---- */
+.tabs{display:flex;gap:2px;padding-left:3px}
+.tab{background:var(--face);border:0;padding:4px 12px 3px;cursor:default;position:relative;top:1px;
+  box-shadow:inset -1px 0 0 var(--blk),inset 1px 1px 0 var(--wht),inset -2px 0 0 var(--shd),inset 0 2px 0 var(--face-lt)}
+.tab.on{top:0;padding:5px 14px 4px;z-index:2;
+  box-shadow:inset -1px 0 0 var(--blk),inset 1px 1px 0 var(--wht),inset -2px 0 0 var(--shd),inset 0 2px 0 var(--face-lt)}
+.tabbody{flex:1;min-height:0;display:flex;flex-direction:column;padding:8px 10px;background:var(--face);
+  box-shadow:inset -1px -1px 0 var(--blk),inset 1px 1px 0 var(--wht),inset -2px -2px 0 var(--shd),inset 2px 2px 0 var(--face-lt)}
+
+/* ---- quick launch ---- */
+.quick{display:flex;gap:1px;align-items:center}
+.quick button{width:22px;height:22px;background:none;border:0;display:grid;place-items:center;cursor:default}
+.quick button:hover{box-shadow:inset -1px -1px 0 var(--shd),inset 1px 1px 0 var(--wht)}
+.quick button:active{box-shadow:inset -1px -1px 0 var(--wht),inset 1px 1px 0 var(--shd)}
+
+/* ---- screen saver ---- */
+.saver{position:fixed;inset:0;z-index:99998;background:#000;display:block;cursor:none}
+
+/* ---- the blue screen ---- */
+.bsod{position:fixed;inset:0;z-index:100001;background:#0000aa;color:#c8c8ff;
+  font-family:'VT323',ui-monospace,monospace;display:grid;place-items:center;padding:6vw;cursor:pointer}
+.bsod-inner{max-width:62ch;font-size:24px;line-height:1.35}
+.bsod-title{background:#c8c8ff;color:#0000aa;display:inline-block;padding:0 12px;margin-bottom:22px;font-size:26px}
+.bsod-inner p{margin:0 0 18px}
+.bsod-inner ul{margin:0 0 22px;padding-left:26px}
+.bsod-inner li{margin-bottom:8px}
+.bsod-press{text-align:center}
+.caret{animation:caret 1s steps(2) infinite}
+@keyframes caret{50%{opacity:0}}
+
+/* ---- calculator ---- */
+.calc{flex:1;min-height:0;display:flex;flex-direction:column;gap:5px;padding:6px}
+.calc-display{background:#fff;text-align:right;padding:3px 6px;font-size:15px;font-variant-numeric:tabular-nums;overflow:hidden;white-space:nowrap;
+  box-shadow:inset -1px -1px 0 var(--wht),inset 1px 1px 0 var(--shd),inset -2px -2px 0 var(--face-lt),inset 2px 2px 0 var(--blk)}
+.calc-row{display:flex;gap:4px;align-items:center}
+.calc-mem{width:30px;text-align:center;padding:2px 0;box-shadow:inset -1px -1px 0 var(--wht),inset 1px 1px 0 var(--shd)}
+.calc-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;flex:1;min-height:0}
+.calckey{background:var(--face);border:0;cursor:default;font-weight:bold;color:#000080;padding:2px;
+  box-shadow:inset -1px -1px 0 var(--blk),inset 1px 1px 0 var(--wht),inset -2px -2px 0 var(--shd),inset 2px 2px 0 var(--face-lt)}
+.calckey:active{box-shadow:inset -1px -1px 0 var(--face-lt),inset 1px 1px 0 var(--shd),inset -2px -2px 0 var(--wht),inset 2px 2px 0 var(--blk)}
+.calckey.red{color:#a00000}
+.calckey.blue{color:#0000c0}
+.calckey.wide{flex:1;height:22px}
+@media (prefers-reduced-motion: reduce){ .caret{animation:none} }

@@ -4,16 +4,20 @@ import { Menu } from "./system/Menu";
 import { Win } from "./system/Window";
 import { chime } from "./system/chime";
 import { fit, viewport } from "./system/geometry";
+import { ScreenSaver } from "./system/ScreenSaver";
+import { wallpaperById } from "./data/wallpapers";
 import { APPS, DESK, SUBMENUS } from "./system/registry";
 import type { DesktopKey } from "./system/registry";
 import { NOTES, README } from "./data/fs";
-import type { AppId, LaunchProps, PowerMode, Sys, WindowState } from "./system/types";
+import type { AppId, LaunchProps, PowerMode, Settings, Sys, WindowState } from "./system/types";
 
-type Power = "on" | "off" | "boot" | "standby";
+type Power = "on" | "off" | "boot" | "standby" | "crash";
 
 export function App() {
   const [wins, setWins] = useState<WindowState[]>([]);
-  const [wall, setWall] = useState("wall-teal");
+  const [settings, setSettingsState] = useState<Settings>({ wall: "teal", saver: "starfield", saverWait: 3 });
+  const [saverOn, setSaverOn] = useState(false);
+  const lastAct = useRef(Date.now());
   const [startOpen, setStartOpen] = useState(false);
   const [sub, setSub] = useState<{ k: string; top: number } | null>(null);
   const [ctx, setCtx] = useState<{ x: number; y: number } | null>(null);
@@ -83,11 +87,13 @@ export function App() {
     });
   }, []);
 
+  const setSettings = useCallback((patch: Partial<Settings>) => setSettingsState((s) => ({ ...s, ...patch })), []);
+
   const sys = useMemo<Sys>(
     () => ({
       open,
-      wall,
-      setWall,
+      settings,
+      setSettings,
       dialog: (title: string, msg: string) => open("dialog", { msg }, title),
       close: (id) => setWins((ws) => ws.filter((w) => w.id !== id)),
       min: (id) => setWins((ws) => ws.map((w) => (w.id === id ? { ...w, min: true } : w))),
@@ -100,9 +106,10 @@ export function App() {
           if (!t || t.z === top) return ws;
           return ws.map((w) => (w.id === id ? { ...w, z: ++zc.current } : w));
         }),
-      power: (m: PowerMode) => setPower(m === "restart" ? "boot" : m === "standby" ? "standby" : "off"),
+      power: (m: PowerMode) =>
+        setPower(m === "restart" ? "boot" : m === "standby" ? "standby" : m === "crash" ? "crash" : "off"),
     }),
-    [open, wall],
+    [open, settings, setSettings],
   );
 
   const launch = useCallback(
@@ -124,6 +131,45 @@ export function App() {
     open("amp", null, null, { x: vw - 478, y: 34 });
   }, [power, sized, open]);
 
+  /* Screen saver: any input is activity; a minute counter does the rest. */
+  useEffect(() => {
+    const bump = () => {
+      lastAct.current = Date.now();
+    };
+    const evts = ["pointermove", "pointerdown", "keydown", "wheel"] as const;
+    evts.forEach((e) => window.addEventListener(e, bump, { passive: true }));
+    const t = setInterval(() => {
+      if (power !== "on" || settings.saver === "none") return;
+      if (Date.now() - lastAct.current > settings.saverWait * 60000) setSaverOn(true);
+    }, 1000);
+    return () => {
+      clearInterval(t);
+      evts.forEach((e) => window.removeEventListener(e, bump));
+    };
+  }, [power, settings.saver, settings.saverWait]);
+
+  /* Ctrl+Alt+Del, and Escape to dismiss whatever menu is open. */
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.altKey && (e.key === "Delete" || e.key === "Backspace")) {
+        e.preventDefault();
+        const tasks = [
+          ...wins.filter((w) => w.appId !== "closeprogram").map((w) => ({ id: w.id, label: w.title })),
+          { id: -1, label: "Systray" },
+          { id: -2, label: "Explorer" },
+        ];
+        open("closeprogram", { msg: JSON.stringify(tasks) }, "Close Program");
+      }
+      if (e.key === "Escape") {
+        setStartOpen(false);
+        setSub(null);
+        setCtx(null);
+      }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [wins, open]);
+
   useEffect(() => {
     if (power !== "boot") return;
     const t = setTimeout(() => {
@@ -143,6 +189,20 @@ export function App() {
           <i />
         </div>
         <div className="bootmsg">Starting Nostalgia 98…</div>
+      </div>
+    );
+  if (power === "crash")
+    return (
+      <div className="bsod" onClick={() => setPower("boot")}>
+        <div className="bsod-inner">
+          <div className="bsod-title">Nostalgia</div>
+          <p>A fatal exception 0E has occurred at 0028:C0011E36. The current application will be terminated.</p>
+          <ul>
+            <li>Press any key to terminate the current application.</li>
+            <li>Press CTRL+ALT+DEL again to restart your computer. You will lose any unsaved information in all applications.</li>
+          </ul>
+          <p className="bsod-press">Press any key to continue <span className="caret">_</span></p>
+        </div>
       </div>
     );
   if (power === "off")
@@ -178,7 +238,8 @@ export function App() {
   return (
     <>
       <div
-        className={"desktop " + wall}
+        className="desktop"
+        style={{ background: wallpaperById(settings.wall).background }}
         onPointerDown={(e) => {
           if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains("icons")) {
             setSelIcon("");
@@ -301,6 +362,18 @@ export function App() {
           Start
         </button>
         <div className="tsplit" />
+        <div className="quick">
+          <button title="Show Desktop" onClick={() => setWins((ws) => ws.map((w) => ({ ...w, min: true })))}>
+            <svg width="15" height="15" viewBox="0 0 16 16" shapeRendering="crispEdges" aria-hidden="true">
+              <rect x="1" y="2" width="12" height="9" fill="#c0c7c8" stroke="#000" />
+              <rect x="1" y="2" width="12" height="2" fill="#000080" />
+              <path d="M5 13h9M11 11l3 2-3 2" stroke="#000" fill="none" />
+            </svg>
+          </button>
+          <button title="Nostalgia Explorer" onClick={() => open("ie")}><Ico n="ie" s={15} /></button>
+          <button title="Nostalgia Amp" onClick={() => open("amp")}><Ico n="amp" s={15} /></button>
+        </div>
+        <div className="tsplit" />
         <div className="tasks">
           {wins.map((w) => (
             <button
@@ -322,9 +395,21 @@ export function App() {
             <path d="M2 5h3l4-3v10L5 9H2z" fill="#000" />
             <path d="M11 4c2 2 2 6 0 8" stroke="#000" fill="none" />
           </svg>
-          <span className="clock">{now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+          <span className="clock" title={now.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long", year: "numeric" })}>
+            {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </span>
         </div>
       </div>
+
+      {saverOn && (
+        <ScreenSaver
+          kind={settings.saver}
+          onWake={() => {
+            lastAct.current = Date.now();
+            setSaverOn(false);
+          }}
+        />
+      )}
     </>
   );
 }
