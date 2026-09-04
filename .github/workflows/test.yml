@@ -1,0 +1,43 @@
+name: Test
+
+# Reusable — called by ci.yml (every push and PR) and by deploy.yml, so a
+# production deploy runs exactly the same checks a pull request does.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Typecheck, unit tests, production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests (Vitest)
+        run: npm test
+
+      # Building here as well as in deploy.yml is deliberate: a type error
+      # or a broken import should fail a pull request, not a deploy.
+      - name: Build
+        run: npm run build
+
+      - name: Upload dist/
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7

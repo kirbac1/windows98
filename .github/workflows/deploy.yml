@@ -1,0 +1,152 @@
+name: Deploy to production
+
+# Builds the static bundle and ships it to windows98.kirbac.fi on every
+# push to main.
+#
+# This site has no server side: the whole desktop is one HTML file plus a
+# JS and a CSS bundle, so the deploy is a file copy rather than an app
+# restart. Two things still matter:
+#
+#   - a release directory per deploy, so a rollback is one rsync rather
+#     than a rebuild
+#   - the live document root is updated from that release with --delete,
+#     so a renamed hashed asset does not leave its predecessor behind
+#     forever
+#
+# Everything that identifies the server lives in repository secrets. This
+# repository is public.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Two deploys racing would interleave their rsyncs into one document root.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
+  deploy:
+    name: Ship dist/ to the web root
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      SITE_URL: ${{ vars.SITE_URL || 'https://windows98.kirbac.fi' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Build
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Check the deploy secrets are present
+        env:
+          SSH_HOST: ${{ secrets.DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          missing=""
+          [ -n "$SSH_HOST" ]    || missing="$missing DEPLOY_HOST"
+          [ -n "$SSH_USER" ]    || missing="$missing DEPLOY_USER"
+          [ -n "$DEPLOY_PATH" ] || missing="$missing DEPLOY_PATH"
+          [ -n "$SSH_KEY" ]     || missing="$missing DEPLOY_SSH_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secret(s):$missing — see DEPLOYMENT.md"
+            exit 1
+          fi
+
+      - name: Set up SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.DEPLOY_HOST }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # Pin the host key rather than accepting whatever answers, so a
+          # DNS or routing surprise cannot silently redirect the deploy.
+          if [ -n "$KNOWN_HOSTS" ]; then
+            printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            echo "::warning::DEPLOY_KNOWN_HOSTS not set — falling back to ssh-keyscan (trust on first use)."
+            ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          fi
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Ship the release and publish it
+        env:
+          SSH_HOST: ${{ secrets.DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          RELEASE="windows98/releases/$(date -u +%Y%m%d-%H%M%S)-${GITHUB_SHA::7}"
+
+          ssh -o BatchMode=yes "$SSH_USER@$SSH_HOST" "mkdir -p '$RELEASE'"
+
+          # 755/644 explicitly: a release extracted with restrictive modes
+          # serves a 403 while the files themselves are perfectly fine.
+          rsync -az --no-perms --no-owner --no-group --chmod=D755,F644 \
+            -e "ssh -o BatchMode=yes" \
+            dist/ "$SSH_USER@$SSH_HOST:$RELEASE/"
+
+          ssh -o BatchMode=yes "$SSH_USER@$SSH_HOST" \
+            RELEASE="$RELEASE" DEPLOY_PATH="$DEPLOY_PATH" KEEP=5 bash -s <<'REMOTE'
+          set -euo pipefail
+          REL="$HOME/$RELEASE"
+          DOC="$DEPLOY_PATH"
+
+          [ -d "$DOC" ] || { echo "document root $DOC does not exist"; exit 1; }
+
+          # Publish. --delete keeps old hashed bundles from accumulating.
+          #
+          # Dotfiles are excluded, which also protects them from --delete:
+          # Plesk keeps .php-ini and .php-version in the document root of a
+          # subdomain, and .well-known is where an ACME renewal in flight
+          # lives. Deleting either because they were not in dist/ would be
+          # a genuinely confusing way to break the domain. The build emits
+          # no dotfiles, so nothing is lost by never shipping them.
+          rsync -a --delete --exclude '.*' "$REL/" "$DOC/"
+
+          # Prune by name: release directories are YYYYmmdd-HHMMSS-sha, so
+          # reverse lexicographic order is reverse chronological.
+          cd "$HOME/windows98/releases"
+          ls -1d -- */ | sort -r | tail -n +$((KEEP + 1)) | xargs -r rm -rf --
+
+          echo "published $RELEASE to $DOC"
+          REMOTE
+
+          echo "Deployed ${GITHUB_SHA::7}"
+
+      - name: Verify the site responds
+        run: |
+          # A deploy that "succeeded" but serves an error page is not a
+          # success. Check for a marker only the real page contains.
+          for i in 1 2 3; do
+            body=$(curl -sSL --max-time 15 "$SITE_URL/" || true)
+            code=$(curl -sSL -o /dev/null -w '%{http_code}' --max-time 15 "$SITE_URL/" || echo 000)
+            if [ "$code" = "200" ] && printf '%s' "$body" | grep -q 'Nostalgia 98'; then
+              echo "✓ $SITE_URL returned 200 and served the desktop"
+              exit 0
+            fi
+            echo "attempt $i: HTTP $code, retrying…"
+            sleep 5
+          done
+          echo "::error::$SITE_URL did not serve the site after the deploy."
+          exit 1
